@@ -123,10 +123,7 @@ fn execute(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(e)) -> {
-      echo e <> " for query: " <> query
-      Error(QueryError)
-    }
+    Ok(Error(_)) -> Error(QueryError)
     Ok(Ok(result)) ->
       gdecode.run(
         option.unwrap(result, dynamic.nil()),
@@ -167,10 +164,7 @@ pub fn signin(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(e)) -> {
-      echo e
-      Error(QueryError)
-    }
+    Ok(Error(_)) -> Error(QueryError)
     Ok(Ok(result)) -> Ok(result)
   }
 }
@@ -202,10 +196,7 @@ pub fn signup(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(e)) -> {
-      echo e
-      Error(QueryError)
-    }
+    Ok(Error(_)) -> Error(QueryError)
     Ok(Ok(result)) -> Ok(result)
   }
 }
