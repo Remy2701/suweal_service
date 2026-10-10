@@ -19,8 +19,26 @@ import suweal/node as surreal_node
 import suweal/surreal_ql
 import suweal/wss/surreal_wss
 import suweal_service/model.{
-  type DBMessage, ExecuteQuery, ExecuteSignin, ExecuteSignup, WSSResponse,
+  ExecuteQuery, ExecuteSignin, ExecuteSignup, WSSResponse,
 }
+
+pub type QueryData =
+  model.QueryData
+
+pub type SigninData =
+  model.SigninData
+
+pub type SignupData =
+  model.SignupData
+
+pub type WorkerMessage =
+  model.WorkerMessage
+
+pub type DBMessage =
+  model.DBMessage
+
+pub type ProcessName =
+  process.Name(hive.DispatcherMessage(DBMessage))
 
 //-----------------------------------------------------------------------------------------------//
 //                                            Execute                                            //
@@ -89,7 +107,7 @@ pub fn with_param(
 
 pub fn run(
   request: DBRequest(a),
-  name: process.Name(hive.DispatcherMessage(DBMessage)),
+  name: ProcessName,
 ) -> Result(option.Option(a), DBExecutionError) {
   case request {
     DBQueryRequest(timeout:, namespace:, query:, parameters:, decoder:) -> {
@@ -101,7 +119,7 @@ pub fn run(
 fn execute(
   timeout: Int,
   namespace: String,
-  name: process.Name(hive.DispatcherMessage(DBMessage)),
+  name: ProcessName,
   query: List(surreal_node.Node),
   parameters: List(#(String, surreal_ql.SurrealQL)),
   decoder: gdecode.Decoder(a),
@@ -140,7 +158,7 @@ fn execute(
 pub fn signin(
   timeout: Int,
   namespace: String,
-  name: process.Name(hive.DispatcherMessage(model.DBMessage)),
+  name: ProcessName,
   collection: String,
   fields: List(#(String, surreal_ql.SurrealQL)),
 ) {
@@ -172,7 +190,7 @@ pub fn signin(
 pub fn signup(
   timeout: Int,
   namespace: String,
-  name: process.Name(hive.DispatcherMessage(model.DBMessage)),
+  name: ProcessName,
   collection: String,
   fields: List(#(String, surreal_ql.SurrealQL)),
 ) {
@@ -205,10 +223,7 @@ pub fn signup(
 //                                Dispatcher                                 //
 //---------------------------------------------------------------------------//
 
-pub fn dispatcher(
-  name: process.Name(hive.DispatcherMessage(model.DBMessage)),
-  connection: suweal.Connection,
-) {
+pub fn dispatcher(name: ProcessName, connection: suweal.Connection) {
   hive.new_with_initialiser(3000, fn(subject) {
     use wss_connection <- result.try(
       surreal_wss.new(connection)
