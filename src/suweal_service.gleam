@@ -646,6 +646,16 @@ pub fn single(
   }
 }
 
+pub fn some(
+  result: Result(option.Option(a), DBExecutionError),
+) -> Result(a, DBExecutionError) {
+  case result {
+    Ok(option.Some(value)) -> Ok(value)
+    Ok(option.None) -> Error(NotFound)
+    Error(response) -> Error(response)
+  }
+}
+
 /// Pick the first value of the optional list or return None
 pub fn optional_single(
   result: Result(option.Option(List(a)), DBExecutionError),

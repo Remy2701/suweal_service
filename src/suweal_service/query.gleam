@@ -46,6 +46,14 @@ pub fn single(query: Query(a, option.Option(List(b)))) -> Query(a, b) {
   })
 }
 
+pub fn some(query: Query(a, option.Option(b))) -> Query(a, b) {
+  Query(..query, transform: fn(value) {
+    value
+    |> query.transform()
+    |> suweal_service.some()
+  })
+}
+
 pub fn optional_single(
   query: Query(a, option.Option(List(b))),
 ) -> Query(a, option.Option(b)) {
