@@ -4,7 +4,7 @@
 packages = [
   { name = "beehive", version = "1.2.1", build_tools = ["gleam"], requirements = ["gleam_deque", "gleam_erlang", "gleam_otp", "gleam_stdlib", "gleam_time"], otp_app = "beehive", source = "hex", outer_checksum = "4A4B9FD34A358BE00B47D07969EF228D52DA707484B6BB70BC4C4A509C0D7F92" },
   { name = "birl", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_regexp", "gleam_stdlib", "gleam_time", "ranger"], otp_app = "birl", source = "hex", outer_checksum = "51F9D18050231ED8A324A5A87C07F2582E22C1CA8BBDEC213623A7B39AF060F1" },
-  { name = "collie", version = "2.0.1", build_tools = ["gleam"], requirements = ["exception", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_otp", "gleam_stdlib", "logging", "websocks"], otp_app = "collie", source = "hex", outer_checksum = "01CDDCF0CABABC253638450EB2E39706E98ACF47C80C9941F30EFDB58888EB89" },
+  { name = "collie", version = "3.0.0", build_tools = ["gleam"], requirements = ["exception", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_otp", "gleam_stdlib", "logging", "websocks"], otp_app = "collie", source = "hex", outer_checksum = "A419EA772E07F5F71F327706DC318440525AF9E3249E915F7A76B3E3C25658D7" },
   { name = "directories", version = "1.2.0", build_tools = ["gleam"], requirements = ["envoy", "gleam_stdlib", "platform", "simplifile"], otp_app = "directories", source = "hex", outer_checksum = "D13090CFCDF6759B87217E8DDD73A75903A700148A82C1D33799F333E249BF9E" },
   { name = "envoy", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "envoy", source = "hex", outer_checksum = "9C6FBB6BFA02A52798BEEC5977A738CAD6E4A057F4B67FD0C8061AD2502C191A" },
   { name = "exception", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "6BDEA95248093599391C3B5DF1835C5C6A86C353C2F99CE539B450E3432FE117" },
@@ -37,9 +37,9 @@ packages = [
   { name = "marceau", version = "1.3.0", build_tools = ["gleam"], requirements = [], otp_app = "marceau", source = "hex", outer_checksum = "2D1C27504BEF45005F5DFB18591F8610FB4BFA91744878210BDC464412EC44E9" },
   { name = "mist", version = "6.0.3", build_tools = ["gleam"], requirements = ["exception", "gleam_erlang", "gleam_http", "gleam_otp", "gleam_stdlib", "glisten", "gramps", "hpack_erl", "logging"], otp_app = "mist", source = "hex", outer_checksum = "1B07F321D5FA0CB162D81496F2DE96AEB6EF8980F4F38230A4CC3F849497E020" },
   { name = "odysseus", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "odysseus", source = "hex", outer_checksum = "6A97DA1075BDDEA8B60F47B1DFFAD49309FA27E73843F13A0AF32EA7087BA11C" },
-  { name = "offstage", version = "0.7.0", build_tools = ["gleam"], requirements = ["file_streams", "garanti", "gleam_http", "gleam_json", "gleam_stdlib", "gleam_time", "json_value", "mist", "pretty_diff", "taffy", "wisp"], otp_app = "offstage", source = "hex", outer_checksum = "B59D4D98032C1092224C286F81AD4CD4C7524D5416DC93B06B5C6EAA76773755" },
-  { name = "offstage_suweal", version = "0.8.0", build_tools = ["gleam"], requirements = ["gjwt", "gleam_stdlib", "offstage", "suweal"], otp_app = "offstage_suweal", source = "hex", outer_checksum = "9227F3F50E1FA6C8E35C5A9AA4C50548EDE2EA07DCB5BC6838B7086838826B21" },
-  { name = "omcg", version = "0.2.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "omcg", source = "hex", outer_checksum = "9F7119F228DFD4271B9EC4B8D9C4A961BAADE0298B283CCE688DBCBAE51203CB" },
+  { name = "offstage", version = "0.9.2", build_tools = ["gleam"], requirements = ["file_streams", "garanti", "gleam_http", "gleam_json", "gleam_stdlib", "gleam_time", "json_value", "mist", "pretty_diff", "taffy", "wisp"], otp_app = "offstage", source = "hex", outer_checksum = "13DBD68AC8A5AA4AD6FF1F369520583459E57EA7EDD9D8B4F55448AD38117A2F" },
+  { name = "offstage_suweal", version = "0.8.4", build_tools = ["gleam"], requirements = ["gjwt", "gleam_stdlib", "offstage", "suweal"], otp_app = "offstage_suweal", source = "hex", outer_checksum = "7E9B37A39C2F825CBAD4DADF442A2A0D27A86D1EE8F9170EB2AF83DE44CA756E" },
+  { name = "omcg", version = "0.3.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "omcg", source = "hex", outer_checksum = "2EB04A1B4B49E9D1C509B47655D339B2218749EBB5041076C8CBCF0606F90A78" },
   { name = "platform", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "platform", source = "hex", outer_checksum = "8339420A95AD89AAC0F82F4C3DB8DD401041742D6C3F46132A8739F6AEB75391" },
   { name = "pretty_diff", version = "1.0.1", build_tools = ["gleam"], requirements = ["glam", "gleam_stdlib"], otp_app = "pretty_diff", source = "hex", outer_checksum = "481750E997A0277BDAA0CB416DEDF7BAA6B3C9EF8424FC18ED005D2E9FD6E8FC" },
   { name = "ranger", version = "1.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_yielder"], otp_app = "ranger", source = "hex", outer_checksum = "C8988E8F8CDBD3E7F4D8F2E663EF76490390899C2B2885A6432E942495B3E854" },
@@ -47,9 +47,9 @@ packages = [
   { name = "simplifile", version = "2.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "A2727627B063E87351934C7F7F008F2D1FDB16F6DE0B8C79F9E46459CFC9C164" },
   { name = "splitter", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "8F1485306E0D59168A39E12ED8844F9F616EC59C3C63AFCFDAE04DBD68690CBC" },
   { name = "str", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "houdini", "odysseus"], otp_app = "str", source = "hex", outer_checksum = "641BBAE6BB781B9652EA0A47A8D06E536BF823397FD2BE4C5754B67E333C999E" },
-  { name = "suweal", version = "0.3.1", build_tools = ["gleam"], requirements = ["collie", "exception", "gjwt", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_httpc", "gleam_json", "gleam_otp", "gleam_stdlib", "gleam_time", "json_value", "omcg", "sceall", "str"], otp_app = "suweal", source = "hex", outer_checksum = "5E90391A4FCBD7F3F2F406E9357FAF0AB70218179FA1EFB86B882B0903E2BAF6" },
+  { name = "suweal", version = "0.4.1", build_tools = ["gleam"], requirements = ["collie", "exception", "gjwt", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_httpc", "gleam_json", "gleam_otp", "gleam_stdlib", "gleam_time", "json_value", "omcg", "sceall", "str"], otp_app = "suweal", source = "hex", outer_checksum = "F75E725B2B419F85E45952481EBDECA36E84C07F6D2D3D2FE77E72335E7EBB89" },
   { name = "taffy", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "taffy", source = "hex", outer_checksum = "49398358B8EEC1EF2101F53DF0AC6B46EEA01E42092DBE076C41D06214E2E19C" },
-  { name = "websocks", version = "3.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_stdlib"], otp_app = "websocks", source = "hex", outer_checksum = "C70340E5B6C3390383ADA17029DCA6F8903863A7AD8CD8E1520EDCC4FE70D6FD" },
+  { name = "websocks", version = "4.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_stdlib"], otp_app = "websocks", source = "hex", outer_checksum = "89B0C31A032CBE28D4C5FB5CC25A8A690669FEBA501C63F99A4E8F5748750B2A" },
   { name = "wisp", version = "2.2.2", build_tools = ["gleam"], requirements = ["directories", "exception", "filepath", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "houdini", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "5FF5F1E288C3437252ABB93D8F9CF42FF652CE7AD54480CFE736038DC09C4F22" },
 ]
 
@@ -59,6 +59,6 @@ gleam_erlang = { version = ">= 1.3.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.11.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
-offstage = { version = ">= 0.7.0 and < 1.0.0" }
-offstage_suweal = { version = ">= 0.8.0 and < 1.0.0" }
-suweal = { version = ">= 0.3.1 and < 1.0.0" }
+offstage = { version = ">= 0.9.2 and < 1.0.0" }
+offstage_suweal = { version = ">= 0.8.4 and < 1.0.0" }
+suweal = { version = ">= 0.4.1 and < 1.0.0" }
