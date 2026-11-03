@@ -1,5 +1,5 @@
 import gleam/dynamic
-import gleam/dynamic/decode as gdecode
+import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/int
 import gleam/list
@@ -10,9 +10,8 @@ import gleam/time/duration
 import hive
 import hive/queue
 import offstage
-import offstage/dynamic/decode
-import offstage/dynamic/serialize
 import offstage/offstage_core
+import pont/serialize
 import suweal
 import suweal/http/surreal_http
 import suweal/node as surreal_node
@@ -58,7 +57,7 @@ pub type DBRequest(a) {
     namespace: String,
     query: List(surreal_node.Node),
     parameters: List(#(String, surreal_ql.SurrealQL)),
-    decoder: gdecode.Decoder(a),
+    decoder: decode.Decoder(a),
   )
 }
 
@@ -122,7 +121,7 @@ fn execute(
   name: ProcessName,
   query: List(surreal_node.Node),
   parameters: List(#(String, surreal_ql.SurrealQL)),
-  decoder: gdecode.Decoder(a),
+  decoder: decode.Decoder(a),
 ) {
   let subject = process.new_subject()
   let db = process.named_subject(name)
@@ -143,10 +142,8 @@ fn execute(
     Error(_) -> Error(Timeout)
     Ok(Error(_)) -> Error(QueryError)
     Ok(Ok(result)) ->
-      gdecode.run(
-        option.unwrap(result, dynamic.nil()),
-        gdecode.optional(decoder),
-      )
+      option.unwrap(result, dynamic.nil())
+      |> decode.run(decode.optional(decoder))
       |> result.map_error(FailedToDecode)
   }
 }
@@ -522,9 +519,7 @@ type WorkerState {
   WorkerState(
     subject: process.Subject(DBMessage),
     state: WorkerQueueState,
-    wss_subject: process.Subject(
-      surreal_wss.SurrealWssResponse(gdecode.Dynamic),
-    ),
+    wss_subject: process.Subject(surreal_wss.SurrealWssResponse(decode.Dynamic)),
     wss_connection: surreal_wss.SurrealWssConnection,
   )
 }

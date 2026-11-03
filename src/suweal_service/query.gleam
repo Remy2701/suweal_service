@@ -3,7 +3,7 @@ import gleam/function
 import gleam/option
 import hive
 import offstage
-import offstage/dynamic/serialize
+import pont/serialize
 import suweal/node as surreal_node
 import suweal/surreal_ql
 import suweal_service
