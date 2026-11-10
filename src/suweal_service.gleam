@@ -46,7 +46,7 @@ pub type ProcessName =
 pub type DBExecutionError {
   Timeout
   ServiceUnavailable
-  QueryError
+  QueryError(String)
   FailedToDecode(List(decode.DecodeError))
   NotFound
 }
@@ -140,7 +140,7 @@ fn execute(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(_)) -> Error(QueryError)
+    Ok(Error(message)) -> Error(QueryError(message))
     Ok(Ok(result)) ->
       option.unwrap(result, dynamic.nil())
       |> decode.run(decode.optional(decoder))
@@ -179,7 +179,7 @@ pub fn signin(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(_)) -> Error(QueryError)
+    Ok(Error(message)) -> Error(QueryError(message))
     Ok(Ok(result)) -> Ok(result)
   }
 }
@@ -211,7 +211,7 @@ pub fn signup(
   let response = process.receive(subject, timeout)
   case response {
     Error(_) -> Error(Timeout)
-    Ok(Error(_)) -> Error(QueryError)
+    Ok(Error(message)) -> Error(QueryError(message))
     Ok(Ok(result)) -> Ok(result)
   }
 }
@@ -608,7 +608,7 @@ pub fn to_response(
         response.timeout.apply(
           "Timeout while " <> operation_type_particle(operation) <> name,
         )
-      QueryError ->
+      QueryError(_) ->
         response.internal_server_error.apply(
           "Failed to " <> operation_type_verb(operation) <> name,
         )
