@@ -1,21 +1,24 @@
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process
-import gleam/int
+import gleam/function
 import gleam/list
-import gleam/option
+import gleam/option.{type Option, None, Some}
+import gleam/otp/static_supervisor
+import gleam/otp/supervision
 import gleam/result
 import gleam/string
 import gleam/time/duration
+import gleam/time/timestamp
 import hive
-import hive/queue
 import offstage
 import offstage/offstage_core
 import pont/serialize
+import pont/value
 import suweal
 import suweal/http/surreal_http
 import suweal/node as surreal_node
-import suweal/surreal_ql
+import suweal/surreal_ql.{type SurrealQL}
 import suweal/wss/surreal_wss
 import suweal_service/model.{
   ExecuteQuery, ExecuteSignin, ExecuteSignup, WSSResponse,
@@ -37,7 +40,24 @@ pub type DBMessage =
   model.DBMessage
 
 pub type ProcessName =
-  process.Name(hive.DispatcherMessage(DBMessage))
+  model.ProcessName
+
+pub type SuwealServiceConfig =
+  model.SuwealServiceConfig
+
+pub const default_config = model.default_config
+
+pub const with_log_callback = model.with_log_callback
+
+pub const without_queue = model.without_queue
+
+pub const with_queue = model.with_queue
+
+pub const with_strategy = model.with_strategy
+
+pub const with_close_after = model.with_close_after
+
+pub const with_wss_connector = model.with_wss_connector
 
 //-----------------------------------------------------------------------------------------------//
 //                                            Execute                                            //
@@ -47,7 +67,7 @@ pub type DBExecutionError {
   Timeout
   ServiceUnavailable
   QueryError(String)
-  FailedToDecode(List(decode.DecodeError))
+  FailedToDecode(value: String, errors: List(decode.DecodeError))
   NotFound
 }
 
@@ -56,15 +76,15 @@ pub type DBRequest(a) {
     timeout: Int,
     namespace: String,
     query: List(surreal_node.Node),
-    parameters: List(#(String, surreal_ql.SurrealQL)),
+    parameters: List(#(String, SurrealQL)),
     decoder: decode.Decoder(a),
   )
 }
 
 pub fn query(
-  namespace: String,
-  query: List(surreal_node.Node),
-  serializer: serialize.Serializer(a),
+  namespace namespace: String,
+  query query: List(surreal_node.Node),
+  serializer serializer: serialize.Serializer(a),
 ) -> DBRequest(a) {
   DBQueryRequest(
     timeout: 10_000,
@@ -83,7 +103,7 @@ pub fn with_timeout(request: DBRequest(a), timeout: Int) -> DBRequest(a) {
 
 pub fn with_params(
   request: DBRequest(a),
-  parameters: List(#(String, surreal_ql.SurrealQL)),
+  parameters: List(#(String, SurrealQL)),
 ) -> DBRequest(a) {
   case request {
     DBQueryRequest(..) -> DBQueryRequest(..request, parameters: parameters)
@@ -93,7 +113,7 @@ pub fn with_params(
 pub fn with_param(
   request: DBRequest(a),
   name: String,
-  value: surreal_ql.SurrealQL,
+  value: SurrealQL,
 ) -> DBRequest(a) {
   case request {
     DBQueryRequest(..) ->
@@ -105,9 +125,9 @@ pub fn with_param(
 }
 
 pub fn run(
-  request: DBRequest(a),
-  name: ProcessName,
-) -> Result(option.Option(a), DBExecutionError) {
+  request request: DBRequest(a),
+  name name: ProcessName,
+) -> Result(Option(a), DBExecutionError) {
   case request {
     DBQueryRequest(timeout:, namespace:, query:, parameters:, decoder:) -> {
       execute(timeout, namespace, name, query, parameters, decoder)
@@ -120,9 +140,9 @@ fn execute(
   namespace: String,
   name: ProcessName,
   query: List(surreal_node.Node),
-  parameters: List(#(String, surreal_ql.SurrealQL)),
+  parameters: List(#(String, SurrealQL)),
   decoder: decode.Decoder(a),
-) {
+) -> Result(Option(a), DBExecutionError) {
   let subject = process.new_subject()
   let db = process.named_subject(name)
   let query =
@@ -144,7 +164,7 @@ fn execute(
     Ok(Ok(result)) ->
       option.unwrap(result, dynamic.nil())
       |> decode.run(decode.optional(decoder))
-      |> result.map_error(FailedToDecode)
+      |> result.map_error(FailedToDecode(string.inspect(result), _))
   }
 }
 
@@ -157,8 +177,8 @@ pub fn signin(
   namespace: String,
   name: ProcessName,
   collection: String,
-  fields: List(#(String, surreal_ql.SurrealQL)),
-) {
+  fields: List(#(String, SurrealQL)),
+) -> Result(String, DBExecutionError) {
   let subject = process.new_subject()
   let db = process.named_subject(name)
 
@@ -189,8 +209,8 @@ pub fn signup(
   namespace: String,
   name: ProcessName,
   collection: String,
-  fields: List(#(String, surreal_ql.SurrealQL)),
-) {
+  fields: List(#(String, SurrealQL)),
+) -> Result(String, DBExecutionError) {
   let subject = process.new_subject()
   let db = process.named_subject(name)
 
@@ -220,278 +240,385 @@ pub fn signup(
 //                                Dispatcher                                 //
 //---------------------------------------------------------------------------//
 
-pub fn dispatcher(name: ProcessName, connection: suweal.Connection) {
-  hive.new_with_initialiser(3000, fn(subject) {
-    use wss_connection <- result.try(
-      surreal_wss.new(connection)
-      |> surreal_wss.start()
-      |> result.replace_error("Failed to start websocket"),
-    )
+fn dispatcher_init(
+  config: SuwealServiceConfig,
+  subject: process.Subject(DBMessage),
+) -> Result(hive.Initialised(WorkerState, DBMessage), String) {
+  use wss_connection <- result.try(config.wss_connector(config.connection))
 
-    let wss_subject = process.new_subject()
+  let wss_subject = process.new_subject()
 
-    Ok(
-      hive.initialised(WorkerState(
-        subject:,
-        state: Idling,
-        wss_subject:,
-        wss_connection:,
-      ))
-      |> hive.selecting(
-        process.new_selector()
-        |> process.select(subject)
-        |> process.select_map(wss_subject, WSSResponse),
-      ),
-    )
-  })
-  |> hive.with_name(name)
-  |> hive.with_strategy(hive.OldestInFirstOut)
-  |> hive.with_close_after(duration.minutes(5) |> duration.to_milliseconds())
-  |> hive.with_queue(
-    queue.new()
-    |> queue.with_size(100)
-    |> queue.with_timeout(duration.seconds(5) |> duration.to_milliseconds())
-    |> queue.with_strategy(queue.FirstInFirstOut),
+  WorkerState(subject:, state: Idling, wss_subject:, wss_connection:)
+  |> hive.initialised()
+  |> hive.selecting(
+    process.new_selector()
+    |> process.select(subject)
+    |> process.select_map(wss_subject, WSSResponse),
   )
-  |> hive.on_message(fn(state: WorkerState, message) {
-    case state.state, message {
-      Preparing(namespace:, query:, reply_to:),
-        WSSResponse(surreal_wss.UseResponse(..))
-      -> {
-        surreal_wss.send(
-          state.wss_connection,
-          surreal_wss.Query(query, state.wss_subject),
-        )
+  |> Ok
+}
 
-        hive.keep_busy(
-          WorkerState(
-            ..state,
-            state: Processing(query: query, reply_to: reply_to),
-            wss_connection: state.wss_connection
-              |> surreal_wss.with_namespace(namespace),
+fn log(
+  config: SuwealServiceConfig,
+  level: model.LogLevel,
+  message: String,
+  meta: value.Value,
+) -> Nil {
+  case config.log_callback {
+    Some(callback) -> {
+      callback(level, timestamp.system_time(), "SuwealService", message, meta)
+    }
+    None -> Nil
+  }
+}
+
+fn message_to_value(message: DBMessage) -> value.Value {
+  value.object([
+    #("message", case message {
+      ExecuteQuery(namespace:, query:, ..) ->
+        value.object([
+          #("type", value.string("ExecuteQuery")),
+          #("namespace", value.string(namespace)),
+          #("query", value.string(query)),
+        ])
+      ExecuteSignin(data) ->
+        value.object([
+          #("type", value.string("ExecuteSignin")),
+          #("namespace", value.string(data.namespace)),
+          #("collection", value.string(data.collection)),
+        ])
+      ExecuteSignup(data) ->
+        value.object([
+          #("type", value.string("ExecuteSignup")),
+          #("namespace", value.string(data.namespace)),
+          #("collection", value.string(data.collection)),
+        ])
+      WSSResponse(surreal_wss.AuthResponse(id, ..)) ->
+        value.object([
+          #("type", value.string("WSSResponse")),
+          #("response", value.string("AuthResponse")),
+          #("id", value.int(id)),
+        ])
+      WSSResponse(surreal_wss.ErrorResponse(id:, error:)) ->
+        value.object([
+          #("type", value.string("WSSResponse")),
+          #("response", value.string("ErrorResponse")),
+          #("id", value.int(id)),
+          #(
+            "error",
+            value.object([
+              #("kind", value.string(error.kind)),
+              #("message", value.string(error.message)),
+              #("cause", value.nullable_of(error.cause, value.string)),
+              #("code", value.int(error.code)),
+            ]),
           ),
+        ])
+      WSSResponse(surreal_wss.QueryResponse(id:, ..)) ->
+        value.object([
+          #("type", value.string("WSSResponse")),
+          #("response", value.string("QueryResponse")),
+          #("id", value.int(id)),
+        ])
+      WSSResponse(surreal_wss.UseResponse(id:)) ->
+        value.object([
+          #("type", value.string("WSSResponse")),
+          #("response", value.string("UseResponse")),
+          #("id", value.int(id)),
+        ])
+    }),
+  ])
+}
+
+fn handle_preparing(
+  config: SuwealServiceConfig,
+  namespace: String,
+  query: String,
+  reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
+  state: WorkerState,
+  message: DBMessage,
+) -> hive.Next(WorkerState) {
+  case message {
+    WSSResponse(surreal_wss.UseResponse(..)) -> {
+      state.wss_connection
+      |> surreal_wss.send(surreal_wss.Query(query, state.wss_subject))
+
+      WorkerState(
+        ..state,
+        state: Processing(query:, reply_to:),
+        wss_connection: surreal_wss.with_namespace(
+          state.wss_connection,
+          namespace,
+        ),
+      )
+      |> hive.keep_busy
+    }
+    _ -> {
+      log(
+        config,
+        model.LogLevelError,
+        "Unexpected message in preparing state",
+        message_to_value(message),
+      )
+
+      hive.keep_busy(state)
+    }
+  }
+}
+
+fn handle_processing(
+  config: SuwealServiceConfig,
+  reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
+  state: WorkerState,
+  message: DBMessage,
+) -> hive.Next(WorkerState) {
+  case message {
+    WSSResponse(surreal_wss.ErrorResponse(error:, ..)) -> {
+      log(
+        config,
+        model.LogLevelError,
+        "Error response",
+        message_to_value(message),
+      )
+      process.send(
+        reply_to,
+        Error("Error response from SurrealDB: " <> error.message),
+      )
+      hive.continue(WorkerState(..state, state: Idling))
+    }
+    WSSResponse(surreal_wss.QueryResponse(result:, ..)) -> {
+      let first =
+        list.first(result)
+        |> result.replace_error("No result returned from SurrealDB")
+        |> result.map(fn(response) {
+          case response {
+            suweal.SurrealResponse(result:, ..) -> Ok(result)
+            suweal.SurrealErrorResponse(kind:, result:, type_:, time:, details:) -> {
+              log(
+                config,
+                model.LogLevelError,
+                "SurrealDB error",
+                value.object([
+                  #("kind", value.string(kind)),
+                  #("result", value.string(result)),
+                  #("type", value.nullable_of(type_, value.string)),
+                  #("time", value.string(time)),
+                  #("details", value.string(string.inspect(details))),
+                ]),
+              )
+              Error(kind <> " " <> result)
+            }
+          }
+        })
+        |> result.flatten()
+
+      process.send(reply_to, first)
+
+      hive.continue(WorkerState(..state, state: Idling))
+    }
+    _ -> {
+      log(
+        config,
+        model.LogLevelError,
+        "Unexpected message in processing state",
+        message_to_value(message),
+      )
+
+      hive.keep_busy(state)
+    }
+  }
+}
+
+fn handle_idling(
+  config: SuwealServiceConfig,
+  state: WorkerState,
+  message: DBMessage,
+) -> hive.Next(WorkerState) {
+  let auth = fn(
+    fields: List(#(String, SurrealQL)),
+    executor: fn(String, String, List(#(String, SurrealQL))) ->
+      Result(String, suweal.SurrealError),
+    receiver: process.Subject(Result(String, String)),
+  ) {
+    let email =
+      fields
+      |> list.key_find("email")
+      |> result.try(fn(value) {
+        case value {
+          surreal_ql.String(email) -> Ok(email)
+          _ -> Error(Nil)
+        }
+      })
+
+    let password =
+      fields
+      |> list.key_find("password")
+      |> result.try(fn(value) {
+        case value {
+          surreal_ql.String(email) -> Ok(email)
+          _ -> Error(Nil)
+        }
+      })
+
+    case email, password {
+      Ok(email), Ok(password) -> {
+        let res =
+          executor(
+            email,
+            password,
+            list.filter(fields, fn(field) {
+              field.0 != "email" && field.0 != "password"
+            }),
+          )
+
+        case res {
+          Ok(token) -> {
+            process.send(receiver, Ok(token))
+          }
+          Error(suweal.InvalidUrl) -> {
+            log(config, model.LogLevelError, "Invalid URL", value.object([]))
+            process.send(receiver, Error("Invalid URL"))
+          }
+          Error(suweal.HttpError(error)) -> {
+            log(
+              config,
+              model.LogLevelError,
+              "Http error",
+              value.object([#("error", value.string(string.inspect(error)))]),
+            )
+            process.send(receiver, Error("Http error"))
+          }
+          Error(suweal.FailedToDecode(error)) -> {
+            log(
+              config,
+              model.LogLevelError,
+              "Failed to decode",
+              value.object([#("error", value.string(string.inspect(error)))]),
+            )
+            process.send(receiver, Error("Failed to decode"))
+          }
+          Error(suweal.NoResponse) -> {
+            log(config, model.LogLevelError, "No response", value.object([]))
+            process.send(receiver, Error("No response"))
+          }
+          Error(suweal.ErrorResponse(
+            description:,
+            code:,
+            details:,
+            information:,
+          )) -> {
+            log(
+              config,
+              model.LogLevelError,
+              "Error response",
+              value.object([
+                #("description", value.string(description)),
+                #("code", value.int(code)),
+                #("details", value.string(details)),
+                #("information", value.string(information)),
+              ]),
+            )
+            process.send(
+              receiver,
+              Error("Error response from SurrealDB: " <> description),
+            )
+          }
+        }
+      }
+      _, _ -> {
+        log(
+          config,
+          model.LogLevelError,
+          "Missing email or password",
+          value.object([]),
         )
+        process.send(receiver, Error("Missing email or password field"))
       }
-      Preparing(..), _ -> {
-        // Unexpected response
-        hive.keep_busy(state)
-      }
-      Processing(reply_to:, ..),
-        WSSResponse(surreal_wss.QueryResponse(result:, ..))
-      -> {
-        let first =
-          list.first(result)
-          |> result.replace_error("No result returned from SurrealDB")
-          |> result.map(fn(response) {
-            case response {
-              suweal.SurrealResponse(result:, ..) -> Ok(result)
-              suweal.SurrealErrorResponse(kind:, result:, ..) ->
-                Error(kind <> " " <> result)
-            }
-          })
-          |> result.flatten()
+    }
+  }
 
-        process.send(reply_to, first)
+  case message {
+    ExecuteQuery(namespace:, query:, reply_to:) -> {
+      case namespace == state.wss_connection.connection.namespace {
+        True -> {
+          state.wss_connection
+          |> surreal_wss.send(surreal_wss.Query(query, state.wss_subject))
 
-        hive.continue(WorkerState(..state, state: Idling))
-      }
-      Processing(..), _ -> {
-        // Unexpected response
-        hive.keep_busy(state)
-      }
-      Idling, ExecuteQuery(namespace:, query:, reply_to:) -> {
-        case namespace == state.wss_connection.connection.namespace {
-          True -> {
-            surreal_wss.send(
-              state.wss_connection,
-              surreal_wss.Query(query, state.wss_subject),
-            )
+          WorkerState(..state, state: Processing(query:, reply_to:))
+          |> hive.keep_busy()
+        }
+        False -> {
+          // Switch to the correct namespace before executing the query
+          state.wss_connection
+          |> surreal_wss.send(surreal_wss.Use(
+            namespace,
+            state.wss_connection.connection.database,
+            state.wss_subject,
+          ))
 
-            hive.keep_busy(
-              WorkerState(
-                ..state,
-                state: Processing(query: query, reply_to: reply_to),
-              ),
-            )
-          }
-          False -> {
-            surreal_wss.send(
-              state.wss_connection,
-              surreal_wss.Use(
-                namespace,
-                state.wss_connection.connection.database,
-                state.wss_subject,
-              ),
-            )
-
-            hive.keep_busy(
-              WorkerState(
-                ..state,
-                state: Preparing(namespace, query: query, reply_to: reply_to),
-              ),
-            )
-          }
+          WorkerState(..state, state: Preparing(namespace:, query:, reply_to:))
+          |> hive.keep_busy()
         }
       }
-      Idling, ExecuteSignin(data) -> {
-        let email =
-          list.key_find(data.fields, "email")
-          |> result.map(fn(value) {
-            case value {
-              surreal_ql.String(email) -> Ok(email)
-              _ -> Error(Nil)
-            }
-          })
-          |> result.flatten()
-        let password =
-          list.key_find(data.fields, "password")
-          |> result.map(fn(value) {
-            case value {
-              surreal_ql.String(email) -> Ok(email)
-              _ -> Error(Nil)
-            }
-          })
-          |> result.flatten()
+    }
+    ExecuteSignin(data) -> {
+      auth(
+        data.fields,
+        fn(email, password, fields) {
+          state.wss_connection.connection
+          |> suweal.with_namespace(data.namespace)
+          |> surreal_http.signin(data.collection, email, password, fields)
+        },
+        data.receiver,
+      )
+      hive.continue(state)
+    }
+    ExecuteSignup(data) -> {
+      auth(
+        data.fields,
+        fn(email, password, fields) {
+          state.wss_connection.connection
+          |> suweal.with_namespace(data.namespace)
+          |> surreal_http.signup(data.collection, email, password, fields)
+        },
+        data.receiver,
+      )
+      hive.continue(state)
+    }
+    _ -> {
+      log(
+        config,
+        model.LogLevelError,
+        "Unexpected message in idling state",
+        message_to_value(message),
+      )
 
-        case email, password {
-          Ok(email), Ok(password) -> {
-            let res =
-              surreal_http.signin(
-                state.wss_connection.connection
-                  |> suweal.with_namespace(data.namespace),
-                data.collection,
-                email,
-                password,
-                data.fields
-                  |> list.filter(fn(field) {
-                    field.0 != "email" && field.0 != "password"
-                  }),
-              )
+      hive.keep_busy(state)
+    }
+  }
+}
 
-            case res {
-              Ok(token) -> {
-                process.send(data.receiver, Ok(token))
-              }
-              Error(suweal.InvalidUrl) -> {
-                process.send(data.receiver, Error("Invalid URL"))
-              }
-              Error(suweal.HttpError(_)) -> {
-                process.send(data.receiver, Error("Http error"))
-              }
-              Error(suweal.FailedToDecode(_)) -> {
-                process.send(data.receiver, Error("Failed to decode"))
-              }
-              Error(suweal.NoResponse) -> {
-                process.send(data.receiver, Error("No response"))
-              }
-              Error(suweal.ErrorResponse(description:, ..)) -> {
-                process.send(
-                  data.receiver,
-                  Error("Error response from SurrealDB: " <> description),
-                )
-              }
-            }
-          }
-          _, _ -> {
-            process.send(
-              data.receiver,
-              Error("Missing email or password field"),
-            )
-          }
-        }
-
-        hive.continue(state)
+pub fn dispatcher(
+  config: SuwealServiceConfig,
+) -> supervision.ChildSpecification(static_supervisor.Supervisor) {
+  hive.new_with_initialiser(3000, dispatcher_init(config, _))
+  |> hive.with_name(config.name)
+  |> hive.with_strategy(config.strategy)
+  |> hive.with_close_after(config.close_after |> duration.to_milliseconds())
+  |> case config.queue {
+    Some(queue) -> hive.with_queue(_, queue)
+    None -> function.identity
+  }
+  |> hive.on_message(fn(state: WorkerState, message) {
+    case state.state {
+      Preparing(namespace:, query:, reply_to:) -> {
+        handle_preparing(config, namespace, query, reply_to, state, message)
       }
-      Idling, ExecuteSignup(data) -> {
-        let email =
-          list.key_find(data.fields, "email")
-          |> result.map(fn(value) {
-            case value {
-              surreal_ql.String(email) -> Ok(email)
-              _ -> Error(Nil)
-            }
-          })
-          |> result.flatten()
-        let password =
-          list.key_find(data.fields, "password")
-          |> result.map(fn(value) {
-            case value {
-              surreal_ql.String(email) -> Ok(email)
-              _ -> Error(Nil)
-            }
-          })
-          |> result.flatten()
-
-        case email, password {
-          Ok(email), Ok(password) -> {
-            let res =
-              surreal_http.signup(
-                state.wss_connection.connection
-                  |> suweal.with_namespace(data.namespace),
-                data.collection,
-                email,
-                password,
-                data.fields
-                  |> list.filter(fn(field) {
-                    field.0 != "email" && field.0 != "password"
-                  }),
-              )
-
-            case res {
-              Ok(token) -> process.send(data.receiver, Ok(token))
-              Error(suweal.InvalidUrl) -> {
-                process.send(data.receiver, Error("Invalid URL"))
-              }
-              Error(suweal.HttpError(_)) -> {
-                process.send(data.receiver, Error("Http error"))
-              }
-              Error(suweal.FailedToDecode(_)) -> {
-                process.send(data.receiver, Error("Failed to decode"))
-              }
-              Error(suweal.NoResponse) -> {
-                process.send(data.receiver, Error("No response"))
-              }
-              Error(suweal.ErrorResponse(
-                code:,
-                details:,
-                description:,
-                information:,
-              )) -> {
-                process.send(
-                  data.receiver,
-                  Error(
-                    "Error response from SurrealDB: "
-                    <> description
-                    <> " (code: "
-                    <> int.to_string(code)
-                    <> ", details: "
-                    <> details
-                    <> ", information: "
-                    <> information
-                    <> ")",
-                  ),
-                )
-              }
-            }
-
-            process.send(
-              data.receiver,
-              Error("Missing email or password field"),
-            )
-          }
-          _, _ -> {
-            process.send(
-              data.receiver,
-              Error("Missing email or password field"),
-            )
-          }
-        }
-
-        hive.continue(state)
+      Processing(reply_to:, ..) -> {
+        handle_processing(config, reply_to, state, message)
       }
-      Idling, WSSResponse(_) -> {
-        // Ignore message
-        hive.keep_busy(state)
+      Idling -> {
+        handle_idling(config, state, message)
       }
     }
   })
@@ -506,11 +633,11 @@ type WorkerQueueState {
   Preparing(
     namespace: String,
     query: String,
-    reply_to: process.Subject(Result(option.Option(dynamic.Dynamic), String)),
+    reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
   )
   Processing(
     query: String,
-    reply_to: process.Subject(Result(option.Option(dynamic.Dynamic), String)),
+    reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
   )
   Idling
 }
@@ -537,7 +664,7 @@ pub type OperationType {
   Delete
 }
 
-fn operation_type_verb(operation: OperationType) {
+fn operation_type_verb(operation: OperationType) -> String {
   case operation {
     Create -> "create "
     Read -> "fetch "
@@ -546,7 +673,7 @@ fn operation_type_verb(operation: OperationType) {
   }
 }
 
-fn operation_type_particle(operation: OperationType) {
+fn operation_type_particle(operation: OperationType) -> String {
   case operation {
     Create -> "creating "
     Read -> "fetching "
@@ -616,9 +743,14 @@ pub fn to_response(
         response.service_unavailable.apply(
           "Failed to " <> operation_type_verb(operation) <> name,
         )
-      FailedToDecode(e) -> {
+      FailedToDecode(value:, errors:) -> {
         response.internal_server_error.apply(
-          "Failed to decode " <> name <> ": " <> string.inspect(e),
+          "Failed to decode "
+          <> name
+          <> " with value "
+          <> value
+          <> ": "
+          <> string.inspect(errors),
         )
       }
       NotFound ->
@@ -632,54 +764,54 @@ pub fn to_response(
 /// Expect a single result from a database query, returning an error response if there are no 
 /// results. If there are multiple, the first result is returned and the rest are discarded.
 pub fn single(
-  result: Result(option.Option(List(a)), DBExecutionError),
+  result: Result(Option(List(a)), DBExecutionError),
 ) -> Result(a, DBExecutionError) {
   case result {
-    Ok(option.Some([value, ..])) -> Ok(value)
-    Ok(option.None) | Ok(option.Some([])) -> Error(NotFound)
+    Ok(Some([value, ..])) -> Ok(value)
+    Ok(None) | Ok(Some([])) -> Error(NotFound)
     Error(response) -> Error(response)
   }
 }
 
 pub fn some(
-  result: Result(option.Option(a), DBExecutionError),
+  result: Result(Option(a), DBExecutionError),
 ) -> Result(a, DBExecutionError) {
   case result {
-    Ok(option.Some(value)) -> Ok(value)
-    Ok(option.None) -> Error(NotFound)
+    Ok(Some(value)) -> Ok(value)
+    Ok(None) -> Error(NotFound)
     Error(response) -> Error(response)
   }
 }
 
 /// Pick the first value of the optional list or return None
 pub fn optional_single(
-  result: Result(option.Option(List(a)), DBExecutionError),
-) -> Result(option.Option(a), DBExecutionError) {
+  result: Result(Option(List(a)), DBExecutionError),
+) -> Result(Option(a), DBExecutionError) {
   case result {
-    Ok(option.Some([value, ..])) -> Ok(option.Some(value))
-    Ok(option.None) | Ok(option.Some([])) -> option.None |> Ok
+    Ok(Some([value, ..])) -> Ok(Some(value))
+    Ok(None) | Ok(Some([])) -> None |> Ok
     Error(response) -> Error(response)
   }
 }
 
 /// Transform a None value into an empty list
 pub fn empty_if_none(
-  result: Result(option.Option(List(a)), DBExecutionError),
+  result: Result(Option(List(a)), DBExecutionError),
 ) -> Result(List(a), DBExecutionError) {
   case result {
-    Ok(option.Some(values)) -> Ok(values)
-    Ok(option.None) -> Ok([])
+    Ok(Some(values)) -> Ok(values)
+    Ok(None) -> Ok([])
     Error(response) -> Error(response)
   }
 }
 
 /// Require the result to be a non-empty list otherwise return [NotFound].
 pub fn not_empty(
-  result: Result(option.Option(List(a)), DBExecutionError),
+  result: Result(Option(List(a)), DBExecutionError),
 ) -> Result(List(a), DBExecutionError) {
   case result {
-    Ok(option.Some([value, ..values])) -> Ok([value, ..values])
-    Ok(option.None) | Ok(option.Some([])) -> Error(NotFound)
+    Ok(Some([value, ..values])) -> Ok([value, ..values])
+    Ok(None) | Ok(Some([])) -> Error(NotFound)
     Error(response) -> Error(response)
   }
 }
