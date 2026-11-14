@@ -1,5 +1,5 @@
 name = "suweal_service"
-version = "0.3.0"
+version = "0.4.0"
 
 description = "A service for Suweal using Hive."
 licences = ["Apache-2.0"]
