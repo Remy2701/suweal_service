@@ -260,13 +260,21 @@ fn dispatcher_init(
 
 fn log(
   config: SuwealServiceConfig,
+  namespace: String,
   level: model.LogLevel,
   message: String,
   meta: value.Value,
 ) -> Nil {
   case config.log_callback {
     Some(callback) -> {
-      callback(level, timestamp.system_time(), "SuwealService", message, meta)
+      callback(
+        namespace,
+        level,
+        timestamp.system_time(),
+        "SuwealService",
+        message,
+        meta,
+      )
     }
     None -> Nil
   }
@@ -345,7 +353,7 @@ fn handle_preparing(
 
       WorkerState(
         ..state,
-        state: Processing(query:, reply_to:),
+        state: Processing(namespace:, query:, reply_to:),
         wss_connection: surreal_wss.with_namespace(
           state.wss_connection,
           namespace,
@@ -356,6 +364,7 @@ fn handle_preparing(
     _ -> {
       log(
         config,
+        namespace,
         model.LogLevelError,
         "Unexpected message in preparing state",
         message_to_value(message),
@@ -368,6 +377,7 @@ fn handle_preparing(
 
 fn handle_processing(
   config: SuwealServiceConfig,
+  namespace: String,
   reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
   state: WorkerState,
   message: DBMessage,
@@ -376,6 +386,7 @@ fn handle_processing(
     WSSResponse(surreal_wss.ErrorResponse(error:, ..)) -> {
       log(
         config,
+        namespace,
         model.LogLevelError,
         "Error response",
         message_to_value(message),
@@ -396,6 +407,7 @@ fn handle_processing(
             suweal.SurrealErrorResponse(kind:, result:, type_:, time:, details:) -> {
               log(
                 config,
+                namespace,
                 model.LogLevelError,
                 "SurrealDB error",
                 value.object([
@@ -419,6 +431,7 @@ fn handle_processing(
     _ -> {
       log(
         config,
+        namespace,
         model.LogLevelError,
         "Unexpected message in processing state",
         message_to_value(message),
@@ -435,6 +448,7 @@ fn handle_idling(
   message: DBMessage,
 ) -> hive.Next(WorkerState) {
   let auth = fn(
+    namespace: String,
     fields: List(#(String, SurrealQL)),
     executor: fn(String, String, List(#(String, SurrealQL))) ->
       Result(String, suweal.SurrealError),
@@ -476,12 +490,19 @@ fn handle_idling(
             process.send(receiver, Ok(token))
           }
           Error(suweal.InvalidUrl) -> {
-            log(config, model.LogLevelError, "Invalid URL", value.object([]))
+            log(
+              config,
+              namespace,
+              model.LogLevelError,
+              "Invalid URL",
+              value.object([]),
+            )
             process.send(receiver, Error("Invalid URL"))
           }
           Error(suweal.HttpError(error)) -> {
             log(
               config,
+              namespace,
               model.LogLevelError,
               "Http error",
               value.object([#("error", value.string(string.inspect(error)))]),
@@ -491,6 +512,7 @@ fn handle_idling(
           Error(suweal.FailedToDecode(error)) -> {
             log(
               config,
+              namespace,
               model.LogLevelError,
               "Failed to decode",
               value.object([#("error", value.string(string.inspect(error)))]),
@@ -498,7 +520,13 @@ fn handle_idling(
             process.send(receiver, Error("Failed to decode"))
           }
           Error(suweal.NoResponse) -> {
-            log(config, model.LogLevelError, "No response", value.object([]))
+            log(
+              config,
+              namespace,
+              model.LogLevelError,
+              "No response",
+              value.object([]),
+            )
             process.send(receiver, Error("No response"))
           }
           Error(suweal.ErrorResponse(
@@ -509,6 +537,7 @@ fn handle_idling(
           )) -> {
             log(
               config,
+              namespace,
               model.LogLevelError,
               "Error response",
               value.object([
@@ -528,6 +557,7 @@ fn handle_idling(
       _, _ -> {
         log(
           config,
+          namespace,
           model.LogLevelError,
           "Missing email or password",
           value.object([]),
@@ -544,7 +574,7 @@ fn handle_idling(
           state.wss_connection
           |> surreal_wss.send(surreal_wss.Query(query, state.wss_subject))
 
-          WorkerState(..state, state: Processing(query:, reply_to:))
+          WorkerState(..state, state: Processing(namespace:, query:, reply_to:))
           |> hive.keep_busy()
         }
         False -> {
@@ -563,6 +593,7 @@ fn handle_idling(
     }
     ExecuteSignin(data) -> {
       auth(
+        data.namespace,
         data.fields,
         fn(email, password, fields) {
           state.wss_connection.connection
@@ -575,6 +606,7 @@ fn handle_idling(
     }
     ExecuteSignup(data) -> {
       auth(
+        data.namespace,
         data.fields,
         fn(email, password, fields) {
           state.wss_connection.connection
@@ -588,6 +620,7 @@ fn handle_idling(
     _ -> {
       log(
         config,
+        config.connection.namespace,
         model.LogLevelError,
         "Unexpected message in idling state",
         message_to_value(message),
@@ -614,8 +647,8 @@ pub fn dispatcher(
       Preparing(namespace:, query:, reply_to:) -> {
         handle_preparing(config, namespace, query, reply_to, state, message)
       }
-      Processing(reply_to:, ..) -> {
-        handle_processing(config, reply_to, state, message)
+      Processing(reply_to:, namespace:, ..) -> {
+        handle_processing(config, namespace, reply_to, state, message)
       }
       Idling -> {
         handle_idling(config, state, message)
@@ -636,6 +669,7 @@ type WorkerQueueState {
     reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
   )
   Processing(
+    namespace: String,
     query: String,
     reply_to: process.Subject(Result(Option(dynamic.Dynamic), String)),
   )

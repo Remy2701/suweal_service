@@ -103,7 +103,7 @@ pub type LogLevel {
 
 /// Represents the callback to log a message.
 pub type LogCallback =
-  fn(LogLevel, Timestamp, String, String, value.Value) -> Nil
+  fn(String, LogLevel, Timestamp, String, String, value.Value) -> Nil
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– //
 //                                         WSS Connector                                         //
