@@ -135,6 +135,7 @@ pub type SuwealServiceConfig {
     connection: suweal.Connection,
     wss_connector: WSSConnector,
     log_callback: Option(LogCallback),
+    worker_count: Int,
     queue: Option(queue.Builder),
     strategy: hive.Strategy,
     close_after: duration.Duration,
@@ -158,11 +159,19 @@ pub fn default_config(
     name: name,
     connection: connection,
     wss_connector: default_wss_connector,
+    worker_count: 5,
     log_callback: None,
     queue: Some(default_queue()),
     strategy: hive.OldestInFirstOut,
     close_after: duration.minutes(5),
   )
+}
+
+pub fn with_worker_count(
+  config: SuwealServiceConfig,
+  worker_count: Int,
+) -> SuwealServiceConfig {
+  SuwealServiceConfig(..config, worker_count: worker_count)
 }
 
 /// Returns a new configuration with the specified log callback.

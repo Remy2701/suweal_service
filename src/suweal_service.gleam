@@ -59,6 +59,8 @@ pub const with_close_after = model.with_close_after
 
 pub const with_wss_connector = model.with_wss_connector
 
+pub const with_worker_count = model.with_worker_count
+
 //-----------------------------------------------------------------------------------------------//
 //                                            Execute                                            //
 //-----------------------------------------------------------------------------------------------//
@@ -635,6 +637,7 @@ pub fn dispatcher(
   config: SuwealServiceConfig,
 ) -> supervision.ChildSpecification(static_supervisor.Supervisor) {
   hive.new_with_initialiser(3000, dispatcher_init(config, _))
+  |> hive.with_size(config.worker_count)
   |> hive.with_name(config.name)
   |> hive.with_strategy(config.strategy)
   |> hive.with_close_after(config.close_after |> duration.to_milliseconds())
