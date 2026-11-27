@@ -10,7 +10,6 @@ packages = [
   { name = "exception", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "exception", source = "hex", outer_checksum = "6BDEA95248093599391C3B5DF1835C5C6A86C353C2F99CE539B450E3432FE117" },
   { name = "file_streams", version = "2.0.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "file_streams", source = "hex", outer_checksum = "A12E1E618C7845D1C4FE88DD6096DF99FE9696FC56C9135765CE474FABF53F1A" },
   { name = "filepath", version = "1.1.2", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "filepath", source = "hex", outer_checksum = "B06A9AF0BF10E51401D64B98E4B627F1D2E48C154967DA7AF4D0914780A6D40A" },
-  { name = "garanti", version = "0.1.1", build_tools = ["gleam"], requirements = ["gleam_javascript", "gleam_stdlib", "pretty_diff"], otp_app = "garanti", source = "hex", outer_checksum = "A64D348D25B9F4E90ABACDEA8D0E50B6112C12628CCB3DF66DB2AB88CB298BBD" },
   { name = "gjwt", version = "2.0.1", build_tools = ["gleam"], requirements = ["birl", "gleam_erlang", "gleam_json", "gleam_stdlib", "jason", "jose"], otp_app = "gjwt", source = "hex", outer_checksum = "A38DD2A42A8A6DA7A6555C3B9C9BB897C82C68FA84B1703862DB0171490EF350" },
   { name = "glam", version = "2.0.4", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "glam", source = "hex", outer_checksum = "48A043A12091F93D911C316DD8F7FFD03CD9FF6F50848FC56E359D3C168DF0FA" },
   { name = "gleam_crypto", version = "1.6.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_crypto", source = "hex", outer_checksum = "2DE9E4EF53CF6FEE049D4F765731F7178F7A11AEFAE00EEE63BF7536B354AD3F" },
@@ -18,7 +17,6 @@ packages = [
   { name = "gleam_erlang", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_erlang", source = "hex", outer_checksum = "1124AD3AA21143E5AF0FC5CF3D9529F6DB8CA03E43A55711B60B6B7B3874375C" },
   { name = "gleam_http", version = "4.5.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "splitter"], otp_app = "gleam_http", source = "hex", outer_checksum = "38D7E5698759D44F21436F365259F7015104F6FAFA23181CD0B2BB0E5B67BE2B" },
   { name = "gleam_httpc", version = "5.0.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_http", "gleam_stdlib"], otp_app = "gleam_httpc", source = "hex", outer_checksum = "C545172618D07811494E97AAA4A0FB34DA6F6D0061FDC8041C2F8E3BE2B2E48F" },
-  { name = "gleam_javascript", version = "1.0.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_javascript", source = "hex", outer_checksum = "D542C4B4F40E942F5D3372D524419FA521A7BB92D621AF696CC286E89D882D55" },
   { name = "gleam_json", version = "3.1.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_json", source = "hex", outer_checksum = "44FDAA8847BE8FC48CA7A1C089706BD54BADCC4C45B237A992EDDF9F2CDB2836" },
   { name = "gleam_otp", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib"], otp_app = "gleam_otp", source = "hex", outer_checksum = "DE4CA6850842F0266EE95317A25DD6A0A0F20CDFAB7C0ADC2E63251D7C3C72EC" },
   { name = "gleam_regexp", version = "1.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleam_regexp", source = "hex", outer_checksum = "9C215C6CA84A5B35BB934A9B61A9A306EC743153BE2B0425A0D032E477B062A9" },
@@ -37,18 +35,18 @@ packages = [
   { name = "marceau", version = "1.3.0", build_tools = ["gleam"], requirements = [], otp_app = "marceau", source = "hex", outer_checksum = "2D1C27504BEF45005F5DFB18591F8610FB4BFA91744878210BDC464412EC44E9" },
   { name = "mist", version = "6.0.3", build_tools = ["gleam"], requirements = ["exception", "gleam_erlang", "gleam_http", "gleam_otp", "gleam_stdlib", "glisten", "gramps", "hpack_erl", "logging"], otp_app = "mist", source = "hex", outer_checksum = "1B07F321D5FA0CB162D81496F2DE96AEB6EF8980F4F38230A4CC3F849497E020" },
   { name = "odysseus", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "odysseus", source = "hex", outer_checksum = "6A97DA1075BDDEA8B60F47B1DFFAD49309FA27E73843F13A0AF32EA7087BA11C" },
-  { name = "offstage", version = "0.10.0", build_tools = ["gleam"], requirements = ["file_streams", "garanti", "gleam_http", "gleam_json", "gleam_stdlib", "gleam_time", "json_value", "mist", "pont", "pretty_diff", "taffy", "wisp"], otp_app = "offstage", source = "hex", outer_checksum = "0DD4BFEB5A06B338F48607B906778E9B4B8A18D7C0CE01FD89F4DF1A26F6E44C" },
+  { name = "offstage", version = "0.11.0", build_tools = ["gleam"], requirements = ["file_streams", "gleam_http", "gleam_json", "gleam_stdlib", "gleam_time", "json_value", "mist", "pont", "pretty_diff", "taffy", "wisp"], otp_app = "offstage", source = "hex", outer_checksum = "82C3E9202F93DBF9FF1D27EE802FBF9EB88B6EBCCE18FCF276E949341C059B4B" },
   { name = "offstage_suweal", version = "0.9.0", build_tools = ["gleam"], requirements = ["gjwt", "gleam_stdlib", "offstage", "pont", "suweal"], otp_app = "offstage_suweal", source = "hex", outer_checksum = "65F34CF9A2DA09BCF4DAFC31B5E746FC1E3A29346A43C129E9E1F01D693B8A45" },
-  { name = "omcg", version = "0.3.1", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "omcg", source = "hex", outer_checksum = "2EB04A1B4B49E9D1C509B47655D339B2218749EBB5041076C8CBCF0606F90A78" },
+  { name = "omcg", version = "0.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "omcg", source = "hex", outer_checksum = "49F5C10D104BBB83D618ABB0A4FD42A29801175F50BFA0302B9DD9B785CD08DC" },
   { name = "platform", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "platform", source = "hex", outer_checksum = "8339420A95AD89AAC0F82F4C3DB8DD401041742D6C3F46132A8739F6AEB75391" },
-  { name = "pont", version = "1.2.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "gleam_time", "taffy"], otp_app = "pont", source = "hex", outer_checksum = "F2323A4793F882D0FBEF94428A002323D366758EAEE26A14AF8FBEA674E865BF" },
+  { name = "pont", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "gleam_time", "taffy"], otp_app = "pont", source = "hex", outer_checksum = "04550A7FE8E9451CAF8B138F43C486D9548A538FF4DCC8C2337179B06222FEB1" },
   { name = "pretty_diff", version = "1.0.1", build_tools = ["gleam"], requirements = ["glam", "gleam_stdlib"], otp_app = "pretty_diff", source = "hex", outer_checksum = "481750E997A0277BDAA0CB416DEDF7BAA6B3C9EF8424FC18ED005D2E9FD6E8FC" },
   { name = "ranger", version = "1.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_yielder"], otp_app = "ranger", source = "hex", outer_checksum = "C8988E8F8CDBD3E7F4D8F2E663EF76490390899C2B2885A6432E942495B3E854" },
   { name = "sceall", version = "1.1.0", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_stdlib"], otp_app = "sceall", source = "hex", outer_checksum = "20DC648A610555561F4F65A354FD658CAE2275F16033D262186646EADAEE853B" },
   { name = "simplifile", version = "2.7.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "A2727627B063E87351934C7F7F008F2D1FDB16F6DE0B8C79F9E46459CFC9C164" },
   { name = "splitter", version = "1.3.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "splitter", source = "hex", outer_checksum = "8F1485306E0D59168A39E12ED8844F9F616EC59C3C63AFCFDAE04DBD68690CBC" },
   { name = "str", version = "2.1.1", build_tools = ["gleam"], requirements = ["gleam_stdlib", "houdini", "odysseus"], otp_app = "str", source = "hex", outer_checksum = "641BBAE6BB781B9652EA0A47A8D06E536BF823397FD2BE4C5754B67E333C999E" },
-  { name = "suweal", version = "0.8.1", build_tools = ["gleam"], requirements = ["collie", "exception", "gjwt", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_httpc", "gleam_json", "gleam_otp", "gleam_stdlib", "gleam_time", "omcg", "pont", "sceall", "str"], otp_app = "suweal", source = "hex", outer_checksum = "5A9266A5FB079E7BF3EBECB087E8C8A7BAEB01B755F8B41C76315804E1D628AF" },
+  { name = "suweal", version = "0.9.0", build_tools = ["gleam"], requirements = ["collie", "exception", "gjwt", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_httpc", "gleam_json", "gleam_otp", "gleam_stdlib", "gleam_time", "omcg", "pont", "sceall", "str"], otp_app = "suweal", source = "hex", outer_checksum = "F9A71213C67B31324B47BACADA74C3511F95360D820E6A03781ABCCF884ADB92" },
   { name = "taffy", version = "1.1.3", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib"], otp_app = "taffy", source = "hex", outer_checksum = "89216E8EBE14179639381AFE05DF8B0AA2CDFE164D49CA2BFAECFACE7520F8F7" },
   { name = "websocks", version = "4.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_stdlib"], otp_app = "websocks", source = "hex", outer_checksum = "89B0C31A032CBE28D4C5FB5CC25A8A690669FEBA501C63F99A4E8F5748750B2A" },
   { name = "wisp", version = "2.2.2", build_tools = ["gleam"], requirements = ["directories", "exception", "filepath", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "houdini", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "5FF5F1E288C3437252ABB93D8F9CF42FF652CE7AD54480CFE736038DC09C4F22" },
@@ -61,7 +59,7 @@ gleam_otp = { version = ">= 1.3.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 1.0.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.11.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
-offstage = { version = ">= 0.10.0 and < 1.0.0" }
+offstage = { version = ">= 0.11.0 and < 1.0.0" }
 offstage_suweal = { version = ">= 0.9.0 and < 1.0.0" }
-pont = { version = ">= 1.2.0 and < 2.0.0" }
-suweal = { version = ">= 0.8.1 and < 1.0.0" }
+pont = { version = ">= 1.3.0 and < 2.0.0" }
+suweal = { version = ">= 0.9.0 and < 1.0.0" }
